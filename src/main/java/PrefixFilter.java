@@ -37,18 +37,15 @@ public class PrefixFilter {
         JavaSparkContext sc = new JavaSparkContext(conf);
         JavaRDD<String> lines=sc.textFile("data.txt");//每条记录为index,"record"
 
-        //RDD1.每条记录内部元素按照字典序排序，然后选取前缀，得到（前缀，记录号）对
+        //RDD1.每条记录内部元素按照字典序排序，然后选取前缀，得到（前缀，记录）对
         JavaPairRDD<String,String> prefix2Record=lines.mapToPair(
                 new PairFunction<String,String, String>(){
             private static final long serialVersionUID = 1L;
             @Override
-            public Tuple2<String,String> call(String line) throws Exception {
-                String[]item=line.split(",");
-                String index=item[0];
-                String record=item[1];
+            public Tuple2<String,String> call(String record) throws Exception {
                 String prefix=getPrefix(Tool.getCleanStr(record));//获取前缀
 
-                return new Tuple2<>(prefix,index);
+                return new Tuple2<>(prefix,record);
             }
         });
 

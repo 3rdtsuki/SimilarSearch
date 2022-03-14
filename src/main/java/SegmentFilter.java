@@ -93,10 +93,7 @@ public class SegmentFilter {
             private static final long serialVersionUID = 1L;
             @Override
             public Iterator<String> call(String line) throws Exception {
-                String[]item=line.split(",");
-                String index=item[0];
-                String record=item[1];
-                String[]tokens=record.split(" ");//分词
+                String[]tokens=line.split(" ");//分词
                 List<String>tokenList=new ArrayList<>();
                 for(String token:tokens){
                     tokenList.add(Tool.getCleanStr(token));
@@ -114,10 +111,7 @@ public class SegmentFilter {
                 new FlatMapFunction<String,Tuple2<String, String>>(){
                     private static final long serialVersionUID = 1L;
                     @Override
-                    public Iterator<Tuple2<String, String>> call(String line) {
-                        String[]item=line.split(",");
-                        String index=item[0];
-                        String record=item[1];
+                    public Iterator<Tuple2<String, String>> call(String record) {
                         String[]tokens=Tool.getCleanStr(record).split(" ");//分词
                         for(int i=0;i<tokens.length;++i){
                             tokens[i]=Tool.getCleanStr(tokens[i]);
@@ -142,7 +136,7 @@ public class SegmentFilter {
                         List<String> segments=getSegment(tokens,getSegmentMethod);//分段
                         List<Tuple2<String,String>>segment2Index=new ArrayList<>();
                         for(String s:segments){
-                            segment2Index.add(new Tuple2<>(s,index));//（分段，记录编号）
+                            segment2Index.add(new Tuple2<>(s,record));//（分段，记录编号）
                         }
                         return segment2Index.iterator();
                     }

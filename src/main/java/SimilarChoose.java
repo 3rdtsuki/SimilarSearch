@@ -2,6 +2,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SQLContext;
@@ -91,48 +92,30 @@ public class SimilarChoose {
         }
 
         //将候选的倒排列表中所有记录编号加入集合
-        Set<String> idSet=new HashSet<>();
-        for(Tuple2<String, List<String>> resultTuple:resultTuples.collect()){
-            idSet.addAll(resultTuple._2);
-        }
+        JavaRDD<String>filteredRecords=sig2List.flatMap(
+                new FlatMapFunction<Tuple2<String, List<String>>, String>() {
+                    @Override
+                    public Iterator<String> call(Tuple2<String, List<String>> tuple) throws Exception {
+                        return tuple._2.iterator();
+                    }
+                }
+        );
 
-        //3.读取所有记录
-        System.out.println("开始读记录集合");
-        JavaRDD<String> lines=sc.textFile("data.txt");//每条记录为index,"record"
-        JavaPairRDD<String,String>index2Record=lines.mapToPair(
-                new PairFunction<String, String, String>() {
-                    @Override
-                    public Tuple2<String, String> call(String line) throws Exception {
-                        String[]item=line.split(",");
-                        String index=item[0];
-                        String record=item[1];
-                        return new Tuple2<>(index,record);
-                    }
-                }
-        );
-        //4.根据集合中所有编号找到对应的记录(index,record)
-        JavaPairRDD<String,String>filteredRecord=index2Record.filter(
-                new Function<Tuple2<String, String>, Boolean>() {
-                    @Override
-                    public Boolean call(Tuple2<String, String> tuple) throws Exception {
-                        return idSet.contains(tuple._1);
-                    }
-                }
-        );
+
         //相似度验证
-        JavaPairRDD<String,String>result=filteredRecord.filter(
-                new Function<Tuple2<String, String>, Boolean>() {
+        JavaRDD<String>resultRecords=filteredRecords.filter(
+                new Function<String, Boolean>() {
                     @Override
-                    public Boolean call(Tuple2<String, String> tuple) throws Exception {
-                        return Tool.isSimilar(cleanQuery, Tool.getCleanStr(tuple._2),tau);
+                    public Boolean call(String record) throws Exception {
+                        return Tool.isSimilar(cleanQuery, record,tau);
                     }
                 }
         );
         //5.输出结果
-        List<Tuple2<String,String>>results=result.collect();
+        List<String>results=resultRecords.collect();
         System.out.println("Results:");
-        for(Tuple2<String,String> tuple :results){
-            System.out.println(tuple._2);
+        for(String res :results){
+            System.out.println(res);
         }
 
         sc.close();

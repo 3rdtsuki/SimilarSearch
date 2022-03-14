@@ -1,2 +1,2 @@
-1,Beyond Value-Function Gaps: Improved Instance-Dependent Regret Bounds for Episodic Reinforcement Learning
-2,Finding Discriminative Filters for Specific Degradations in Blind Super-Resolution
+Beyond Value-Function Gaps: Improved Instance-Dependent Regret Bounds for Episodic Reinforcement Learning
+Finding Discriminative Filters for Specific Degradations in Blind Super-Resolution

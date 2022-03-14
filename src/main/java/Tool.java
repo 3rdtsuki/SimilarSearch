@@ -31,7 +31,9 @@ public class Tool {
         return list1.size();
     }
     //相似度验证
-    static boolean isSimilar(String s1,String s2,double tau) {
+    static boolean isSimilar(String string1,String string2,double tau) {
+        String s1=getCleanStr(string1);
+        String s2=getCleanStr(string2);
         List<String> list1=new ArrayList<>(Arrays.asList(s1.split(" ")));
         List<String>list2=new ArrayList<>(Arrays.asList(s2.split(" ")));
 
