@@ -15,7 +15,7 @@ public class Tool {
         List<String>recordList;
         if(matcher.find()) {
             sig = matcher.group(1);
-            recordList = Arrays.asList(matcher.group(2).split(","));
+            recordList = Arrays.asList(matcher.group(2).split(", "));//注意除去逗号后面的空格
             return new Tuple2<>(sig,recordList);
         }
         System.err.println("ERROR: 切分索引表项出错！");

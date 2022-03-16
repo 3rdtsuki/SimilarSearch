@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class SegmentFilter {
     //相似度阈值
-    static double tau=0.8;
+    static double tau=0.6;
     enum GetSegmentMethod{
         Ordinary,Polling
     }
