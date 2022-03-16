@@ -98,7 +98,7 @@ public class SegmentFilter {
                 for(String token:tokens){
                     tokenList.add(Tool.getCleanStr(token));
                 }
-                return tokenList.iterator();
+                return tokenList.iterator();//不同line获得的结果会通过flatMap自动拼成RDD
             }
         });
         JavaPairRDD<String, Integer> ones = allTokens.mapToPair(s -> new Tuple2<>(s, 1));

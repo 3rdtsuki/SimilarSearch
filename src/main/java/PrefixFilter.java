@@ -30,6 +30,7 @@ public class PrefixFilter {
         sb.append(tokenList.get(prefixLen-1));
         return sb.toString();
     }
+
     public static void main(String[] args) {
         SparkConf conf = new SparkConf()
                 .setAppName("Mika")
