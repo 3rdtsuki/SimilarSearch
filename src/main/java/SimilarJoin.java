@@ -4,6 +4,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SQLContext;
 import scala.Tuple2;
@@ -18,13 +19,26 @@ import java.util.List;
  */
 public class SimilarJoin {
     static double tau=0.6;
+    static Filter filter=Filter.Segment;//选择过滤算法
+
     public static void main(String[] args) {
         SparkConf conf = new SparkConf()
                 .setAppName("Mika")
                 .setMaster("local");
         JavaSparkContext sc = new JavaSparkContext(conf);
         SQLContext sqlContext=new SQLContext(sc);
-        JavaRDD<String> indexLines=sc.textFile("./index/part-00000");//读取索引文件，格式为(标签,[记录1,记录2])
+        String indexPath;
+        switch (filter){
+            case Prefix:
+                indexPath="./prefix_index/part-00000";
+                break;
+            case Segment:
+                indexPath="./segment_index/part-00000";
+                break;
+            default:
+                return;
+        }
+        JavaRDD<String> indexLines=sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
 
         //1.切分索引表项，得到（标签，倒排列表）元组对
         JavaPairRDD<String, List<String>> sig2List=indexLines.mapToPair(
@@ -53,22 +67,39 @@ public class SimilarJoin {
                     }
                 }
         );
+        //去重
+        JavaPairRDD<Tuple2<String,String>,Integer>pairSet=pairs.mapToPair(
+                new PairFunction<Tuple2<String, String>, Tuple2<String, String>, Integer>() {
+                    @Override
+                    public Tuple2<Tuple2<String, String>, Integer> call(Tuple2<String, String> tuple) throws Exception {
+                        return new Tuple2<>(tuple,1);
+                    }
+                }
+        ).reduceByKey(
+                new Function2<Integer, Integer, Integer>() {
+                    @Override
+                    public Integer call(Integer integer, Integer integer2) throws Exception {
+                        return 1;
+                    }
+                }
+        );
+
 
         //3.记录对一一验证
-        JavaRDD<Tuple2<String,String>>resultPairs=pairs.filter(
-                new Function<Tuple2<String, String>, Boolean>() {
+        JavaPairRDD<Tuple2<String,String>,Integer>resultPairs=pairSet.filter(
+                new Function<Tuple2<Tuple2<String, String>, Integer>, Boolean>() {
                     @Override
-                    public Boolean call(Tuple2<String, String> tuple) throws Exception {
-                        return Tool.isSimilar(tuple._1,tuple._2,tau);
+                    public Boolean call(Tuple2<Tuple2<String, String>, Integer> tuple) throws Exception {
+                        return Tool.isSimilar(tuple._1._1,tuple._1._2,tau);
                     }
                 }
         );
 
         //4.输出结果
-        List<Tuple2<String,String>>results=resultPairs.collect();
+        List<Tuple2<Tuple2<String, String>, Integer>> results=resultPairs.collect();
         System.out.println("Results:");
-        for(Tuple2<String,String> res :results){
-            System.out.println(res._1+","+res._2);
+        for(Tuple2<Tuple2<String, String>, Integer> tuple :results){
+            System.out.println(tuple._1._1+","+tuple._1._2);
         }
 
         sc.close();

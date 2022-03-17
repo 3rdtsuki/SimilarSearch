@@ -39,7 +39,18 @@ public class SimilarChoose {
                 .setMaster("local");
         JavaSparkContext sc = new JavaSparkContext(conf);
         SQLContext sqlContext=new SQLContext(sc);
-        JavaRDD<String> indexLines=sc.textFile(String.format("./%s_index/part-00000", "segment"));//读取索引文件，格式为(标签,[记录1,记录2])
+        String indexPath;
+        switch (filter){
+            case Prefix:
+                indexPath="./prefix_index/part-00000";
+                break;
+            case Segment:
+                indexPath="./segment_index/part-00000";
+                break;
+            default:
+                return;
+        }
+        JavaRDD<String> indexLines=sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
         String query = "Discriminative xxx for Specific Degradations in Blind Super-Resolution";//待查询字符串
 
 
