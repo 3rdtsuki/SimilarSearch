@@ -21,17 +21,15 @@ import java.util.*;
 enum Filter{
     Prefix,Segment
 }
-public class SimilarChoose {
+public class SimilarSelect {
     static double tau=0.6;
-    static Filter filter=Filter.Segment;//选择过滤算法
+    static Filter filter=Filter.Segment;//修改这里，选择过滤算法
     //判断前缀是否重叠
     static boolean isOverlapped(String s1,String s2) {
         List<String> list1=new ArrayList<>(Arrays.asList(s1.split(" ")));
         List<String>list2=new ArrayList<>(Arrays.asList(s2.split(" ")));
         return Tool.intersectionSize(list1,list2)>0;
     }
-
-
 
     public static void main(String[] args) {
         SparkConf conf = new SparkConf()

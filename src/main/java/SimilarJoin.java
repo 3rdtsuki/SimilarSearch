@@ -19,7 +19,7 @@ import java.util.List;
  */
 public class SimilarJoin {
     static double tau=0.6;
-    static Filter filter=Filter.Segment;//选择过滤算法
+    static Filter filter=Filter.Segment;//修改这里，选择过滤算法
 
     public static void main(String[] args) {
         SparkConf conf = new SparkConf()

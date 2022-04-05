@@ -15,11 +15,13 @@ import java.util.*;
  */
 public class SegmentFilter {
     //相似度阈值
-    static double tau=0.6;
+    static double tau=0.8;
+    //分段方法
     enum GetSegmentMethod{
         Ordinary,Polling
     }
     static GetSegmentMethod getSegmentMethod=GetSegmentMethod.Ordinary;
+
     static List<String> getSegment(String[] tokens,GetSegmentMethod method){
         switch (method){
             case Polling:
