@@ -7,7 +7,6 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.sql.SQLContext;
 import scala.Tuple2;
 
 import java.util.*;
@@ -18,17 +17,20 @@ import java.util.*;
  */
 
 //过滤算法
-enum Filter{
-    Prefix,Segment
+enum Filter {
+    Prefix, Segment
 }
+
 public class SimilarSelect {
-    static double tau=0.6;
-    static Filter filter=Filter.Segment;//修改这里，选择过滤算法
+    static double tau = 0.6;
+    static Filter filter = Filter.Segment;//修改这里，选择过滤算法
+    static boolean usePartition = false;
+
     //判断前缀是否重叠
-    static boolean isOverlapped(String s1,String s2) {
-        List<String> list1=new ArrayList<>(Arrays.asList(s1.split(" ")));
-        List<String>list2=new ArrayList<>(Arrays.asList(s2.split(" ")));
-        return Tool.intersectionSize(list1,list2)>0;
+    static boolean isOverlapped(String s1, String s2) {
+        List<String> list1 = new ArrayList<>(Arrays.asList(s1.split(" ")));
+        List<String> list2 = new ArrayList<>(Arrays.asList(s2.split(" ")));
+        return Tool.intersectionSize(list1, list2) > 0;
     }
 
     public static void main(String[] args) {
@@ -36,26 +38,27 @@ public class SimilarSelect {
                 .setAppName("Mika")
                 .setMaster("local");
         JavaSparkContext sc = new JavaSparkContext(conf);
-        SQLContext sqlContext=new SQLContext(sc);
         String indexPath;
-        switch (filter){
+        switch (filter) {
             case Prefix:
-                indexPath="./prefix_index/part-00000";
+                indexPath = "./prefix_index/part-00000";
                 break;
             case Segment:
-                indexPath="./segment_index/part-00000";
+                indexPath = "./segment_index/part-00000";
                 break;
             default:
                 return;
         }
-        JavaRDD<String> indexLines=sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
-        String query = "Discriminative xxx for Specific Degradations in Blind Super-Resolution";//待查询字符串
 
+        JavaRDD<String> indexLines = sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
+        String query = "Finding Discriminative Filters for Specific Degradations in Blind Super-Resolution";//待查询字符串
+
+        long startTime = System.currentTimeMillis();//读完索引文件后，开始计时。事实上shell中每次查询都从这开始
 
         //1.切分索引表项，得到（标签，倒排列表）元组对
-        HashPartitioner hp=new HashPartitioner(13);
-        JavaPairRDD<String,List<String>> sig2List=indexLines.mapToPair(
-                new PairFunction<String, String, List<String>>(){
+        HashPartitioner hp = new HashPartitioner(13);
+        JavaPairRDD<String, List<String>> sig2List = indexLines.mapToPair(
+                new PairFunction<String, String, List<String>>() {
                     //对于每一行
                     @Override
                     public Tuple2<String, List<String>> call(String line) throws Exception {
@@ -85,57 +88,71 @@ public class SimilarSelect {
             //比较片段看是否相同
             case Segment:
                 System.out.println("开始比较片段");
-                String[]tokens=Tool.getCleanStr(cleanQuery).split(" ");//分词
-                List<String>querySegments=SegmentFilter.getSegment(tokens,SegmentFilter.getSegmentMethod);
+                String[] tokens = Tool.getCleanStr(cleanQuery).split(" ");//分词
+                List<String> querySegments = SegmentFilter.getSegment(tokens, SegmentFilter.GetSegmentMethod.Ordinary);//得到片段
+                System.out.println(querySegments);
 
-                //优化：只查询需要的分区
-                //得到片段哈希值作为待查询分区号
-                List<Integer>querySegmentsHashcodes=new ArrayList<>();
-                assert querySegments != null;
-                System.out.println("片段对应哈希值：");
-                for(String seg:querySegments){
-                    querySegmentsHashcodes.add(hp.getPartition(seg));
-                    System.out.println(seg+":"+hp.getPartition(seg));
-                }
-                //mapPartitionsWithIndex筛选需要的分区
-                JavaRDD<Tuple2<String, List<String>>>sig2ListPartition=sig2List.mapPartitionsWithIndex(
-                        new Function2<Integer, Iterator<Tuple2<String, List<String>>>, Iterator<Tuple2<String, List<String>>>>() {
-                            @Override
-                            //对于每个分区号index，执行call来生成一个迭代器，里面是一个个（片段，倒排列表）
-                            public Iterator<Tuple2<String, List<String>>> call(Integer index, Iterator<Tuple2<String, List<String>>> iterator) throws Exception {
+                if (usePartition) {
+                    //优化：只查询需要的分区
+                    //得到片段哈希值作为待查询分区号
+                    List<Integer> querySegmentsHashcodes = new ArrayList<>();
+                    assert querySegments != null;
+                    System.out.println("片段对应哈希值：");
+                    for (String seg : querySegments) {
+                        querySegmentsHashcodes.add(hp.getPartition(seg));
+                        System.out.println(seg + ":" + hp.getPartition(seg));
+                    }
+                    //mapPartitionsWithIndex筛选需要的分区
+                    JavaRDD<Tuple2<String, List<String>>> sig2ListPartition = sig2List.mapPartitionsWithIndex(
+                            new Function2<Integer, Iterator<Tuple2<String, List<String>>>, Iterator<Tuple2<String, List<String>>>>() {
+                                @Override
+                                //对于每个分区号index，执行call来生成一个迭代器，里面是一个个（片段，倒排列表）
+                                public Iterator<Tuple2<String, List<String>>> call(Integer index, Iterator<Tuple2<String, List<String>>> iterator) throws Exception {
 //                                //输出每个分区内容。注意运行时必须注释掉，否则迭代器迭代完会失效
 //                                while (iterator.hasNext()) {
 //                                    System.out.println(index + ":" + iterator.next());
 //                                }
-                                if (querySegmentsHashcodes.contains(index)) {//如果该分区是需要的
-                                    return iterator;
-                                } else {
-                                    return Collections.emptyIterator();//返回一个空的iter，不能是null
+                                    if (querySegmentsHashcodes.contains(index)) {//如果该分区是需要的
+                                        return iterator;
+                                    } else {
+                                        return Collections.emptyIterator();//返回一个空的iter，不能是null
+                                    }
                                 }
                             }
-                        }
-                        ,false);
+                            , false);
 
-                JavaPairRDD<String,List<String>>sig2ListPartition2=sig2ListPartition.mapToPair(
-                        (PairFunction<Tuple2<String, List<String>>, String, List<String>>) tuple2 -> tuple2
-                );
+                    JavaPairRDD<String, List<String>> sig2ListPartition2 = sig2ListPartition.mapToPair(
+                            (PairFunction<Tuple2<String, List<String>>, String, List<String>>) tuple2 -> tuple2
+                    );
 
-                //在需要的分区内部筛选查询片段
-                resultTuples=sig2ListPartition2.filter(
-                        new Function<Tuple2<String, List<String>>, Boolean>() {
-                            @Override
-                            public Boolean call(Tuple2<String, List<String>> tuple) throws Exception {
-                                return querySegments.contains(tuple._1);
+                    //在需要的分区内部筛选查询片段
+                    resultTuples = sig2ListPartition2.filter(
+                            new Function<Tuple2<String, List<String>>, Boolean>() {
+                                @Override
+                                public Boolean call(Tuple2<String, List<String>> tuple) throws Exception {
+                                    return querySegments.contains(tuple._1);
+                                }
                             }
-                        }
-                );
+                    );
+                } else {
+                    //不使用分区的片段过滤
+                    resultTuples = sig2List.filter(
+                            new Function<Tuple2<String, List<String>>, Boolean>() {
+                                @Override
+                                public Boolean call(Tuple2<String, List<String>> tuple) throws Exception {
+                                    assert querySegments != null;
+                                    return querySegments.contains(tuple._1);
+                                }
+                            }
+                    );
+                }
                 break;
             default:
-                resultTuples=null;
+                resultTuples = null;
         }
 
         //3.将候选的倒排列表中所有记录编号加入集合
-        JavaRDD<String>filteredRecords=resultTuples.flatMap(
+        JavaRDD<String> filteredRecords = resultTuples.flatMap(
                 new FlatMapFunction<Tuple2<String, List<String>>, String>() {
                     @Override
                     public Iterator<String> call(Tuple2<String, List<String>> tuple) throws Exception {
@@ -144,11 +161,11 @@ public class SimilarSelect {
                 }
         );
         //4.去重
-        JavaPairRDD<String, Integer>uniqueRecords=filteredRecords.mapToPair(
+        JavaPairRDD<String, Integer> uniqueRecords = filteredRecords.mapToPair(
                 new PairFunction<String, String, Integer>() {
                     @Override
                     public Tuple2<String, Integer> call(String s) throws Exception {
-                        return new Tuple2<>(s,1);
+                        return new Tuple2<>(s, 1);
                     }
                 }
         ).reduceByKey(
@@ -161,21 +178,26 @@ public class SimilarSelect {
         );
 
         //5.相似度验证
-        JavaPairRDD<String,Integer>resultRecords=uniqueRecords.filter(
+        JavaPairRDD<String, Integer> resultRecords = uniqueRecords.filter(
                 new Function<Tuple2<String, Integer>, Boolean>() {
                     @Override
                     public Boolean call(Tuple2<String, Integer> tuple) throws Exception {
-                        return Tool.isSimilar(cleanQuery, tuple._1,tau);
+                        return Tool.isSimilar(cleanQuery, tuple._1, tau);
                     }
                 }
         );
         //6.输出结果
-        List<Tuple2<String,Integer>>results=resultRecords.collect();
+        List<Tuple2<String, Integer>> results = resultRecords.collect();
         System.out.println("Results:");
-        for(Tuple2<String,Integer> res :results){
+        for (Tuple2<String, Integer> res : results) {
             System.out.println(res._1);
         }
 
+        long endTime = System.currentTimeMillis();
+        long usedTime = endTime - startTime;
+
         sc.close();
+
+        System.out.printf("总时间：%d 毫秒", usedTime);
     }
 }
