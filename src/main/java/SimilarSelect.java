@@ -24,7 +24,7 @@ enum Filter {
 public class SimilarSelect {
     static double tau = 0.6;
     static Filter filter = Filter.Segment;//修改这里，选择过滤算法
-    static boolean usePartition = false;
+    static boolean usePartition = false;//是否使用RDD分区
 
     //判断前缀是否重叠
     static boolean isOverlapped(String s1, String s2) {
@@ -92,8 +92,8 @@ public class SimilarSelect {
                 List<String> querySegments = SegmentFilter.getSegment(tokens, SegmentFilter.GetSegmentMethod.Ordinary);//得到片段
                 System.out.println(querySegments);
 
+                //优化：只查询需要的分区
                 if (usePartition) {
-                    //优化：只查询需要的分区
                     //得到片段哈希值作为待查询分区号
                     List<Integer> querySegmentsHashcodes = new ArrayList<>();
                     assert querySegments != null;

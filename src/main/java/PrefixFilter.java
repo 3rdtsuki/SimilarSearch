@@ -63,8 +63,8 @@ public class PrefixFilter {
                     }
                 }).groupByKey().sortByKey();//哈希分区.partitionBy(new HashPartitioner(4))
 
-        //将RDD保存到index目录
-//        String outputPath="index";
+        //将倒排索引保存
+//        String outputPath="prefix_index";
 //        prefix2InvertedList.saveAsTextFile(outputPath);
 
         for (Tuple2<String, Iterable<String>> tuple : prefix2InvertedList.collect()) {
