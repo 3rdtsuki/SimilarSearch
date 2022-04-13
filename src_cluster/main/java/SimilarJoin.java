@@ -19,10 +19,11 @@ import java.util.List;
  */
 public class SimilarJoin {
     static double tau=0.8;
-    static Filter filter=Filter.Segment;//修改这里，选择过滤算法
+    static Filter filter=Filter.Prefix;//修改这里，选择过滤算法
 
     public static void main(String[] args) {
         tau=Double.parseDouble(args[0]);//阈值
+        int minPartitions=Integer.parseInt(args[1]);//分区数
 
         SparkConf conf = new SparkConf()
                 .setAppName("Mika");
@@ -41,7 +42,7 @@ public class SimilarJoin {
             default:
                 return;
         }
-        JavaRDD<String> indexLines=sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
+        JavaRDD<String> indexLines=sc.textFile(indexPath,minPartitions);//读取索引文件，格式为(标签,[记录1,记录2])
         long startTime = System.currentTimeMillis();//读完索引文件后，开始计时。事实上shell中每次查询都从这开始
 
         //1.切分索引表项，得到（标签，倒排列表）元组对
@@ -103,8 +104,10 @@ public class SimilarJoin {
         //4.输出结果
         List<Tuple2<Tuple2<String, String>, Integer>> results=resultPairs.collect();
         System.out.println("---------Results:----------");
+        int cnt=0;
         for(Tuple2<Tuple2<String, String>, Integer> tuple :results){
-            System.out.println(tuple._1._1+","+tuple._1._2);
+            cnt+=1;
+//            System.out.printf("%d: [(%s)(%s)]\n",cnt,tuple._1._1,tuple._1._2);
         }
 
         long endTime = System.currentTimeMillis();
@@ -112,6 +115,7 @@ public class SimilarJoin {
 
         sc.close();
 
+        System.out.printf("--------相似对数：%d --------\n", cnt);
         System.out.printf("--------总时间：%d 毫秒--------\n", usedTime);
     }
 }

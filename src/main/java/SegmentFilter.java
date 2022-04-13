@@ -1,3 +1,4 @@
+import org.apache.spark.HashPartitioner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -183,7 +184,8 @@ public class SegmentFilter {
                     public Tuple2<String, String> call(Tuple2<String, String> t) {
                         return new Tuple2<>(t._1, t._2); //(段，倒排列表)
                     }
-                }).groupByKey().sortByKey();
+                }).groupByKey().partitionBy(new HashPartitioner(128));//相同key的value合并
+        // 并使用哈希分区，这样哈希值为i的索引保存到索引文件part-i中，相似选择时只需查该文件即可
 
 
         //4.将倒排索引保存

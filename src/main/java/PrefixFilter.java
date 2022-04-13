@@ -61,7 +61,7 @@ public class PrefixFilter {
                     public Tuple2<String, String> call(Tuple2<String, String> t) {
                         return new Tuple2<>(t._1, t._2); //(段，倒排列表)
                     }
-                }).groupByKey().sortByKey();//哈希分区.partitionBy(new HashPartitioner(4))
+                }).groupByKey();
 
         //将倒排索引保存
 //        String outputPath="prefix_index";

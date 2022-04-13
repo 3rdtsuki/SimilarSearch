@@ -56,7 +56,7 @@ public class PrefixFilter {
             }
         });
 
-        //RDD2.合并所有相同前缀的倒排列表，并哈希分区
+        //RDD2.合并所有相同前缀的倒排列表
         JavaPairRDD<String, Iterable<String>> prefix2InvertedList=prefix2Record.mapToPair(
                 new PairFunction<Tuple2<String,String>,String,String>(){
                     private static final long serialVersionUID = 1L;
@@ -64,7 +64,7 @@ public class PrefixFilter {
                     public Tuple2<String,String> call(Tuple2<String,String> t){
                         return new Tuple2<>(t._1, t._2); //(段，倒排列表)
                     }
-                }).groupByKey().sortByKey();//哈希分区.partitionBy(new HashPartitioner(4))
+                }).groupByKey();
 
         //将RDD保存到index目录
 //        String outputPath="prefix_index";

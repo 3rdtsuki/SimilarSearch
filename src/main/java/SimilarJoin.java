@@ -97,10 +97,13 @@ public class SimilarJoin {
 
         //4.输出结果
         List<Tuple2<Tuple2<String, String>, Integer>> results = resultPairs.collect();
-        System.out.println("Results:");
-        for (Tuple2<Tuple2<String, String>, Integer> tuple : results) {
-            System.out.println(tuple._1._1 + "," + tuple._1._2);
+        System.out.println("---------Results:----------");
+        int cnt=0;
+        for(Tuple2<Tuple2<String, String>, Integer> tuple :results){
+            cnt+=1;
+            System.out.printf("%d: [(%s)(%s)]\n",cnt,tuple._1._1,tuple._1._2);
         }
+
 
         sc.close();
     }
