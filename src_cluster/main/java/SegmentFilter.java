@@ -86,8 +86,8 @@ public class SegmentFilter {
     }
 
     public static void main(String[] args) throws IOException {
-        tau=Double.parseDouble(args[0]);
-        int minPartitions=Integer.parseInt(args[1]);
+        tau=Double.parseDouble(args[0]);//阈值
+        int minPartitions=Integer.parseInt(args[1]);//分区数
 
         SparkConf conf = new SparkConf()
                 .setAppName("Mika");

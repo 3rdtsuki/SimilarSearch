@@ -182,7 +182,7 @@ public class SimilarSelect {
                 new Function<Tuple2<String, Integer>, Boolean>() {
                     @Override
                     public Boolean call(Tuple2<String, Integer> tuple) throws Exception {
-                        return Tool.isSimilar(cleanQuery, tuple._1, tau);
+                        return Tool.jaccardSimilarity(cleanQuery, tuple._1) >= tau;
                     }
                 }
         );

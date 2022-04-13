@@ -18,26 +18,31 @@ import java.util.List;
  * @version 相似连接
  */
 public class SimilarJoin {
-    static double tau=0.6;
+    static double tau=0.8;
     static Filter filter=Filter.Segment;//修改这里，选择过滤算法
 
     public static void main(String[] args) {
+        tau=Double.parseDouble(args[0]);//阈值
+
         SparkConf conf = new SparkConf()
-                .setAppName("Mika")
-                .setMaster("local");
+                .setAppName("Mika");
+//                .setMaster("local"); # 集群环境则注释掉该行
         JavaSparkContext sc = new JavaSparkContext(conf);
         String indexPath;
         switch (filter){
             case Prefix:
-                indexPath="./prefix_index/part-00000";
+//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/prefix_index";
+                indexPath="hdfs://acer:9000/prefix_index";
                 break;
             case Segment:
-                indexPath="./segment_index/part-00000";
+//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/segment_index/";
+                indexPath="hdfs://acer:9000/segment_index";
                 break;
             default:
                 return;
         }
         JavaRDD<String> indexLines=sc.textFile(indexPath);//读取索引文件，格式为(标签,[记录1,记录2])
+        long startTime = System.currentTimeMillis();//读完索引文件后，开始计时。事实上shell中每次查询都从这开始
 
         //1.切分索引表项，得到（标签，倒排列表）元组对
         JavaPairRDD<String, List<String>> sig2List=indexLines.mapToPair(
@@ -89,18 +94,24 @@ public class SimilarJoin {
                 new Function<Tuple2<Tuple2<String, String>, Integer>, Boolean>() {
                     @Override
                     public Boolean call(Tuple2<Tuple2<String, String>, Integer> tuple) throws Exception {
-                        return Tool.isSimilar(tuple._1._1,tuple._1._2,tau);
+                        double similarity= Tool.jaccardSimilarity(tuple._1._1,tuple._1._2);
+                        return similarity>=tau;
                     }
                 }
         );
 
         //4.输出结果
         List<Tuple2<Tuple2<String, String>, Integer>> results=resultPairs.collect();
-        System.out.println("Results:");
+        System.out.println("---------Results:----------");
         for(Tuple2<Tuple2<String, String>, Integer> tuple :results){
             System.out.println(tuple._1._1+","+tuple._1._2);
         }
 
+        long endTime = System.currentTimeMillis();
+        long usedTime = endTime - startTime;
+
         sc.close();
+
+        System.out.printf("--------总时间：%d 毫秒--------\n", usedTime);
     }
 }

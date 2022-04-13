@@ -90,7 +90,7 @@ public class SimilarJoin {
                 new Function<Tuple2<Tuple2<String, String>, Integer>, Boolean>() {
                     @Override
                     public Boolean call(Tuple2<Tuple2<String, String>, Integer> tuple) throws Exception {
-                        return Tool.isSimilar(tuple._1._1, tuple._1._2, tau);
+                        return Tool.jaccardSimilarity(tuple._1._1, tuple._1._2) >= tau;
                     }
                 }
         );

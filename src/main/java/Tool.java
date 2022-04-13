@@ -34,17 +34,18 @@ public class Tool {
     }
 
     //相似度验证
-    static boolean isSimilar(String string1, String string2, double tau) {
+    static double jaccardSimilarity(String string1,String string2) {
         String s1 = getCleanStr(string1);
         String s2 = getCleanStr(string2);
         List<String> list1 = new ArrayList<>(Arrays.asList(s1.split(" ")));
         List<String> list2 = new ArrayList<>(Arrays.asList(s2.split(" ")));
+        int n1 = list1.size();
+        int n2 = list2.size();
 
         int intersectionSize = intersectionSize(list1, list2);
-        int unionSize = list1.size() + list2.size() - intersectionSize;
-        double jaccard = (double) intersectionSize / unionSize;
-        System.out.printf("%.2f %s\n", jaccard, s2);
-        return jaccard >= tau;
+        int unionSize = n1 + n2 - intersectionSize;
+
+        return (double) intersectionSize/unionSize;
     }
 
 }
