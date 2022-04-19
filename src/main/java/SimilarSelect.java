@@ -1,3 +1,4 @@
+import org.apache.hadoop.util.hash.Hash;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -7,6 +8,7 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.sql.SQLContext;
 import scala.Tuple2;
 
 import java.util.*;
@@ -22,8 +24,8 @@ enum Filter {
 }
 
 public class SimilarSelect {
-    static double tau = 0.6;
-    static Filter filter = Filter.Segment;//修改这里，选择过滤算法
+    static double tau = 0.8;
+    static Filter filter = Filter.Prefix;//修改这里，选择过滤算法
 
     //判断前缀是否重叠
     static boolean isOverlapped(String s1, String s2) {
@@ -33,24 +35,29 @@ public class SimilarSelect {
     }
 
     public static void main(String[] args) {
-        int minPartitions=128;
+        tau = Double.parseDouble(args[0]);//阈值
+        int minPartitions = Integer.parseInt(args[1]);//分区数
+        String query = args[2];//待查询字符串
+
+
         SparkConf conf = new SparkConf()
-                .setAppName("Mika")
-                .setMaster("local");
+                .setAppName("Mika");
+//                .setMaster("local"); // 集群环境则注释掉该行
         JavaSparkContext sc = new JavaSparkContext(conf);
         String indexPath;
         switch (filter) {
             case Prefix:
-                indexPath = "./prefix_index/part-00000";
+//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/prefix_index";
+                indexPath = "hdfs://acer:9000/prefix_index";
                 break;
             case Segment:
-                indexPath = "./segment_index/part-00000";
+//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/segment_index/";
+                indexPath = "hdfs://acer:9000/segment_index";
                 break;
             default:
                 return;
         }
 
-        String query = "Finding Discriminative Filters for Specific Degradations in Blind Super-Resolution";//待查询字符串
 
         long startTime = System.currentTimeMillis();//读完索引文件后，开始计时。事实上shell中每次查询都从这开始
 
@@ -97,7 +104,10 @@ public class SimilarSelect {
                 JavaRDD<String>partitionIndexLines;
                 for (String seg : querySegments) {
                     int hashCode=hp.getPartition(seg);//该段的哈希值
-                    if(hashCode<100){
+                    if(hashCode<10){
+                        indexPath = "hdfs://acer:9000/segment_index/part-0000"+hashCode;
+                    }
+                    else if(hashCode<100){
                         indexPath = "hdfs://acer:9000/segment_index/part-000"+hashCode;
                     }
                     else{
@@ -155,20 +165,16 @@ public class SimilarSelect {
                 }
         );
 
-        //5.相似度验证
-        JavaPairRDD<String, Integer> resultRecords = uniqueRecords.filter(
-                new Function<Tuple2<String, Integer>, Boolean>() {
-                    @Override
-                    public Boolean call(Tuple2<String, Integer> tuple) throws Exception {
-                        return Tool.jaccardSimilarity(cleanQuery, tuple._1) >= tau;
-                    }
-                }
-        );
-        //6.输出结果
-        List<Tuple2<String, Integer>> results = resultRecords.collect();
-        System.out.println("Results:");
-        for (Tuple2<String, Integer> res : results) {
-            System.out.println(res._1);
+        //5.相似度验证,输出结果
+        List<Tuple2<String, Integer>> results = uniqueRecords.collect();
+        System.out.println("---------Results:----------");
+        int cnt = 0;
+        for (Tuple2<String, Integer> tuple : results) {
+            double similarity = Tool.jaccardSimilarity(cleanQuery, tuple._1);
+            if(similarity >= tau) {
+                cnt += 1;
+                System.out.printf("%d: %s: %f\n", cnt, tuple._1, similarity);
+            }
         }
 
         long endTime = System.currentTimeMillis();
@@ -176,6 +182,6 @@ public class SimilarSelect {
 
         sc.close();
 
-        System.out.printf("总时间：%d 毫秒", usedTime);
+        System.out.printf("--------总时间：%d 毫秒--------\n", usedTime);
     }
 }

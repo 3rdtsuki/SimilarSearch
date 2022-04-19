@@ -87,11 +87,15 @@ public class SegmentFilter {
     }
 
     public static void main(String[] args) throws IOException {
+        tau=Double.parseDouble(args[0]);//阈值
+        int minPartitions=Integer.parseInt(args[1]);//分区数
+
         SparkConf conf = new SparkConf()
-                .setAppName("Mika")
-                .setMaster("local");
+                .setAppName("Mika");
+//                .setMaster("local");
         JavaSparkContext sc = new JavaSparkContext(conf);
-        JavaRDD<String> lines = sc.textFile("data.txt");
+//        JavaRDD<String> lines = sc.textFile("data.txt");
+        JavaRDD<String> lines = sc.textFile("hdfs://acer:9000/data",minPartitions);
 
         long startTime = System.currentTimeMillis();
 
@@ -184,24 +188,26 @@ public class SegmentFilter {
                     public Tuple2<String, String> call(Tuple2<String, String> t) {
                         return new Tuple2<>(t._1, t._2); //(段，倒排列表)
                     }
-                }).groupByKey().partitionBy(new HashPartitioner(128));//相同key的value合并
+                }).groupByKey().partitionBy(new HashPartitioner(minPartitions));//相同key的value合并
         // 并使用哈希分区，这样哈希值为i的索引保存到索引文件part-i中，相似选择时只需查该文件即可
 
 
         //4.将倒排索引保存
-//        String outputPath="segment_index";
-//        segment2InvertedList.saveAsTextFile(outputPath);
-        List<Tuple2<String, Iterable<String>>> output = segment2InvertedList.collect();
-        for (Tuple2<String, Iterable<String>> tuple : output) {
-            System.out.println(tuple._1() + ":" + tuple._2());
-        }
+        System.out.println("--------save index--------");
+//        String outputPath="file:///home/mika/Desktop/mika_java/mika-classes/segment_index";
+        String outputPath="hdfs://acer:9000/segment_index";
+        segment2InvertedList.saveAsTextFile(outputPath);
+//        List<Tuple2<String, Iterable<String>>> output = segment2InvertedList.collect();
+//        for (Tuple2<String, Iterable<String>> tuple : output) {
+//            System.out.println(tuple._1() + ":" + tuple._2());
+//        }
 
         long endTime = System.currentTimeMillis();
         long usedTime = endTime - startTime;
 
         sc.close();
 
-        System.out.printf("总时间：%d 毫秒\n", usedTime);
+        System.out.printf("--------总时间：%d 毫秒--------\n", usedTime);
     }
 }
 
