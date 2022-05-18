@@ -24,7 +24,9 @@
 
 2.启动Hadoop和Spark服务
 
-3.在shell中运行（--class后面是要运行的java类，并且该类包含main方法，这里运行`SimilarSelect.java`）
+3.Tool.java中控制本地还是集群运行
+
+4.在shell中运行（--class后面是要运行的java类，并且该类包含main方法，这里运行`SimilarSelect.java`）
 
 ```sh
 # 本地环境

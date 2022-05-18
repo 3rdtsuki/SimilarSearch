@@ -9,39 +9,60 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.sql.SQLContext;
 import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author Mika
  * @version 相似连接
  */
 public class SimilarJoin {
-    static double tau=0.8;
-    static Filter filter=Filter.Segment;//修改这里，选择过滤算法
+    static double tau=0.6;
+    static int minPartitions=1;//分区数
+
+    enum Filter{
+        Prefix,Segment
+    }
+    static Filter filter=Filter.Prefix;//使用哪种索引
 
     public static void main(String[] args) {
-        tau=Double.parseDouble(args[0]);//阈值
-        int minPartitions=Integer.parseInt(args[1]);//分区数
-
-        SparkConf conf = new SparkConf()
-                .setAppName("Mika");
-//                .setMaster("local"); // 集群环境则注释掉该行
-        JavaSparkContext sc = new JavaSparkContext(conf);
+        SparkConf conf;
+        JavaSparkContext sc;
         String indexPath;
-        switch (filter){
-            case Prefix:
-//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/prefix_index";
-                indexPath="hdfs://acer:9000/prefix_index";
-                break;
-            case Segment:
-//                indexPath="file:///home/mika/Desktop/mika_java/mika-classes/segment_index/";
-                indexPath="hdfs://acer:9000/segment_index";
-                break;
-            default:
-                return;
+        if(Tool.local) {
+            conf = new SparkConf()
+                    .setAppName("Mika")
+                    .setMaster("local"); // 集群环境则注释掉该行
+            sc = new JavaSparkContext(conf);
+            switch (filter){
+                case Prefix:
+                    indexPath="file:///home/mika/Desktop/mika_java/mika-classes/prefix_index";
+                    break;
+                case Segment:
+                    indexPath="file:///home/mika/Desktop/mika_java/mika-classes/segment_index/";
+                    break;
+                default:
+                    return;
+            }
         }
+        else{
+            tau = Double.parseDouble(args[0]);
+            minPartitions = Integer.parseInt(args[1]);
+            conf = new SparkConf()
+                    .setAppName("Mika");
+            sc = new JavaSparkContext(conf);
+            switch (filter){
+                case Prefix:
+                    indexPath="hdfs://acer:9000/prefix_index";
+                    break;
+                case Segment:
+                    indexPath="hdfs://acer:9000/segment_index";
+                    break;
+                default:
+                    return;
+            }
+        }
+
+
         JavaRDD<String> indexLines=sc.textFile(indexPath,minPartitions);//读取索引文件，格式为(标签,[记录1,记录2])
         long startTime = System.currentTimeMillis();//读完索引文件后，开始计时。事实上shell中每次查询都从这开始
 
@@ -57,18 +78,22 @@ public class SimilarJoin {
         );
 
         //2.对每个倒排列表，将记录对加入集合
+        HashSet<String>set=new HashSet<>();
         JavaRDD<Tuple2<String,String>>pairs=sig2List.flatMap(
                 new FlatMapFunction<Tuple2<String, List<String>>, Tuple2<String, String>>() {
                     @Override
                     public Iterator<Tuple2<String, String>> call(Tuple2<String, List<String>> tuple) throws Exception {
                         List<Tuple2<String,String>>pairList=new ArrayList<>();
                         int n=tuple._2.size();
-                        if(n==1 || n>10){
-                            return pairList.iterator();
-                        }
                         for(int i=0;i<n;++i){
                             for(int j=i+1;j<n;++j){
-                                pairList.add(new Tuple2<>(tuple._2.get(i),tuple._2.get(j)));
+                                Tuple2<String,String>tuple2=new Tuple2<>(tuple._2.get(i),tuple._2.get(j));
+                                String s=tuple2.toString();
+                                if(set.contains(s))continue;
+                                else {
+                                    pairList.add(tuple2);
+                                    set.add(s);
+                                }
                             }
                         }
                         return pairList.iterator();
@@ -91,6 +116,7 @@ public class SimilarJoin {
         int cnt=0;
         for(Tuple2<String, String> tuple :results){
             cnt+=1;
+//            System.out.println(tuple._1+","+tuple._2);
         }
 
         long endTime = System.currentTimeMillis();
