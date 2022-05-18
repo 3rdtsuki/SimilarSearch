@@ -42,3 +42,35 @@ spark-submit \
 /home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar
 ```
 
+```sh
+spark-submit \
+--class PrefixFilter \
+--master spark://acer:7077 \
+/home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
+0.6 128
+
+spark-submit \
+--class SegmentFilter \
+--master spark://acer:7077 \
+/home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
+0.6 128
+
+spark-submit \
+--class PrefixSelect \
+--master spark://acer:7077 \
+/home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
+0.8 128 'FFinding Discriminative Filters for Specific Degradations in Blind Super-Resolution'
+
+spark-submit \
+--class SegmentSelect \
+--master spark://acer:7077 \
+/home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
+0.8 128 'FFinding Discriminative Filters for Specific Degradations in Blind Super-Resolution'
+
+spark-submit \
+--class SimilarJoin \
+--master spark://acer:7077 \
+/home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
+0.8
+```
+
