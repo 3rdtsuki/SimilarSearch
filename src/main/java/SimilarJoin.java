@@ -22,7 +22,7 @@ public class SimilarJoin {
     enum Filter{
         Prefix,Segment
     }
-    static Filter filter=Filter.Prefix;//使用哪种索引
+    static Filter filter=Filter.Segment;//使用哪种索引
 
     public static void main(String[] args) {
         SparkConf conf;
@@ -76,30 +76,27 @@ public class SimilarJoin {
                     }
                 }
         );
-
         //2.对每个倒排列表，将记录对加入集合
-        HashSet<String>set=new HashSet<>();
         JavaRDD<Tuple2<String,String>>pairs=sig2List.flatMap(
                 new FlatMapFunction<Tuple2<String, List<String>>, Tuple2<String, String>>() {
                     @Override
                     public Iterator<Tuple2<String, String>> call(Tuple2<String, List<String>> tuple) throws Exception {
                         List<Tuple2<String,String>>pairList=new ArrayList<>();
                         int n=tuple._2.size();
+                        if(n>=10) {
+                            return pairList.iterator();
+                        }
                         for(int i=0;i<n;++i){
                             for(int j=i+1;j<n;++j){
                                 Tuple2<String,String>tuple2=new Tuple2<>(tuple._2.get(i),tuple._2.get(j));
-                                String s=tuple2.toString();
-                                if(set.contains(s))continue;
-                                else {
-                                    pairList.add(tuple2);
-                                    set.add(s);
-                                }
+                                pairList.add(tuple2);
                             }
                         }
                         return pairList.iterator();
                     }
                 }
         );
+
         //3.记录对一一验证
         JavaRDD<Tuple2<String,String>>resultPairs=pairs.filter(
                 new Function<Tuple2<String, String>, Boolean>() {
@@ -114,10 +111,10 @@ public class SimilarJoin {
         List<Tuple2<String, String>> results=resultPairs.collect();
         System.out.println("---------Results:----------");
         int cnt=0;
-        for(Tuple2<String, String> tuple :results){
-            cnt+=1;
-//            System.out.println(tuple._1+","+tuple._2);
-        }
+//        for(Tuple2<String, String> tuple :results){
+//            cnt+=1;
+////            System.out.println(tuple._1+","+tuple._2);
+//        }
 
         long endTime = System.currentTimeMillis();
         long usedTime = endTime - startTime;
