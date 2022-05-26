@@ -5,7 +5,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Tool {
-    static boolean local=true;//是否本地运行
+    static boolean local=false;//是否本地运行
+
     //用正则表达式从索引表项中提取标签和倒排列表，格式为(标签,[记录1,记录2])
     static Tuple2<String,List<String>> getTuple(String line){
         Pattern pattern=Pattern.compile("\\((.*),\\[(.*)\\]\\)");

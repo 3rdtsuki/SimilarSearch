@@ -6,7 +6,13 @@
 
 - SegmentFilter.java：片段过滤算法生成倒排索引
 
-- SimilarSelect.java：相似选择
+- TraditionalFilter.java：传统索引构建
+
+- PrefixSelect.java：前缀索引相似选择
+
+- SegmentSelect.java：片段索引相似选择
+
+- TraditionalSelect.java：传统索引相似选择
 
 - SimilarJoin.java：相似连接
 
@@ -71,6 +77,6 @@ spark-submit \
 --class SimilarJoin \
 --master spark://acer:7077 \
 /home/mika/Desktop/mika_java/mika-classes/out/artifacts/mika_classes_jar/mika-classes.jar \
-0.8
+0.8 128 Prefix
 ```
 

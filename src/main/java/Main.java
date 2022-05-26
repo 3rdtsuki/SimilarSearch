@@ -1,12 +1,18 @@
 
 public class Main {
     public static void main(String[] args) {
-        double tau=0.9;
-        for (int i = 5; i <=110; ++i) {
-//            int prefixLen=i-(int) Math.ceil(tau*i)+1;//前缀长度
-            int segmentNum = (int) Math.ceil((1 - tau) / tau * i) + 1;//段数
-            float temp = (float) i / segmentNum;
-            System.out.printf("%f,",temp);
+        for (int i = 0; i < 5; ++i) {
+            double tau = i * 0.1 + 0.5;
+            for (int n = 5; n < 115; n+=5) {
+                //片段平均长度
+                int segmentNum = ((int) Math.ceil((1 - tau) / tau * n) + 1);
+                System.out.printf("%f,",(float) n/ segmentNum );
+            }
+            System.out.println();
+            for (int n = 5; n < 115; n+=5) {
+                System.out.printf("%d,", n - (int) Math.ceil(tau * n) + 1);
+            }
+            System.out.println("\n");
         }
 
     }
